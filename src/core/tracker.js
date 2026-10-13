@@ -15,13 +15,13 @@ export class Tracker {
     this.pinchState = [false, false, false, false];
     this.prev = [];
     this.fps = 0; this._fc = 0; this._ft = performance.now();
-    this.infMs = 0;
+    this.infMs = 0; this.frameN = 0; this.skipEvery = 1;
   }
 
   async startCamera() {
     let stream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 }, facingMode: 'user' }, audio: false });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 30, max: 30 }, facingMode: 'user' }, audio: false });
     } catch (e) {
       if (e && (e.name === 'NotAllowedError' || e.name === 'NotFoundError')) throw e;
       stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
@@ -63,13 +63,18 @@ export class Tracker {
     let hands = null, face = null;
     if (this.ready && this.camOk && v.readyState >= 2 && v.currentTime !== this.lastVT) {
       this.lastVT = v.currentTime;
-      const t0 = performance.now();
-      try {
-        if (needs.hands) this.lastHands = this.hand.detectForVideo(v, now);
-        if (needs.face) this.lastFace = this.face.detectForVideo(v, now + 0.01);
-      } catch (e) { /* skip frame */ }
-      this.infMs = this.infMs * 0.9 + (performance.now() - t0) * 0.1;
-      this._fc++;
+      this.frameN++;
+      // Slow laptop? When inference is heavy, only run it on every 2nd/3rd camera frame so the game keeps rendering smoothly.
+      if (this.frameN % this.skipEvery === 0) {
+        const t0 = performance.now();
+        try {
+          if (needs.hands) this.lastHands = this.hand.detectForVideo(v, now);
+          if (needs.face) this.lastFace = this.face.detectForVideo(v, now + 0.01);
+        } catch (e) { /* skip frame */ }
+        this.infMs = this.infMs * 0.9 + (performance.now() - t0) * 0.1;
+        this.skipEvery = this.infMs > 40 ? 3 : this.infMs > 20 ? 2 : 1;
+        this._fc++;
+      }
     }
     if (now - this._ft > 1000) { this.fps = this._fc * 1000 / (now - this._ft); this._fc = 0; this._ft = now; }
     const m = this.mapper(W, H);

@@ -21,11 +21,13 @@ export class App {
     this.cd = 0; this.t = 0; this.dwell = { el: null, t: 0 };
     this.orbs = Array.from({ length: 7 }, (_, i) => ({ x: Math.random(), y: Math.random(), r: 0.18 + Math.random() * 0.2, s: 0.02 + Math.random() * 0.03, h: [255, 190, 300, 170][i % 4], p: Math.random() * 6 }));
     this.noHandT = 0; this.shake = 0; this.zoom = 0; this.freezeT = 0; this.flashA = 0; this.flashC = '255,255,255';
-    this.quality = localStorage.getItem('camrush.q') || 'high';
+    this.quality = localStorage.getItem('camrush.q') || 'high'; this.userQ = !!localStorage.getItem('camrush.q'); this.slowT = 0; this.ema = 16; this._vig = null;
     this.bloomC = document.createElement('canvas'); this.bloomX = this.bloomC.getContext('2d');
     this.stars = Array.from({ length: 90 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() * 0.8 + 0.2, p: Math.random() * 6 }));
     this.wipe = document.getElementById('wipe');
-    this.resize(); addEventListener('resize', () => this.resize());
+    this.applyQuality(); this.resize(); addEventListener('resize', () => this.resize());
+    this.page = 0; this.per = 6; this._els = []; this._elsT = -1e9; this.lockEl = null;
+    addEventListener('wheel', (e) => { if (this.state === 'menu') this.setPage(this.page + (e.deltaY > 0 ? 1 : -1)); }, { passive: true });
     this.buildMenu();
     this.bindUI();
     this.last = performance.now();
@@ -33,24 +35,48 @@ export class App {
   }
 
   resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, this.quality === 'high' ? 1.25 : 1);
     this.W = innerWidth; this.H = innerHeight; this.dpr = dpr;
     for (const c of [this.canvas, this.cur]) { c.width = this.W * dpr; c.height = this.H * dpr; }
     this.bloomC.width = Math.max(2, this.W >> 2); this.bloomC.height = Math.max(2, this.H >> 2);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this._vig = null; this._elsT = -1e9;
+  }
+
+  // Low quality = no glow blur, no bloom, no menu blur, 1x pixel density. Big win on integrated GPUs.
+  applyQuality() {
+    const low = this.quality !== 'high';
+    document.body.classList.toggle('lq', low);
+    for (const c of [this.ctx, this.cctx]) {
+      if (low) Object.defineProperty(c, 'shadowBlur', { configurable: true, get() { return 0; }, set() {} });
+      else delete c.shadowBlur;
+    }
+    const b = document.getElementById('btn-q'); if (b) b.textContent = low ? 'LQ' : 'HQ';
+  }
+  setQuality(q, manual) {
+    this.quality = q; if (manual) { this.userQ = true; localStorage.setItem('camrush.q', q); }
+    this.applyQuality(); this.resize();
+  }
+  watchPerf(dtMs) {
+    // auto-drop to low quality when the frame time stays above ~25 ms (under 40 fps) for a few seconds
+    this.ema = this.ema * 0.95 + Math.min(dtMs, 100) * 0.05;
+    if (this.userQ || this.quality !== 'high' || this.state === 'splash') { this.slowT = 0; return; }
+    this.slowT = this.ema > 25 ? this.slowT + dtMs / 1000 : Math.max(0, this.slowT - dtMs / 2000);
+    if (this.slowT > 3) { this.setQuality('low', false); localStorage.setItem('camrush.q', 'low'); }
   }
 
   punch(v = 0.03) { this.zoom = Math.max(this.zoom, v); }
   hitstop(ms = 60) { this.freezeT = Math.max(this.freezeT, ms / 1000); }
   flash(c = '255,255,255', a = 0.35) { this.flashC = c; this.flashA = Math.max(this.flashA, a); }
-  toggleQuality() { this.quality = this.quality === 'high' ? 'low' : 'high'; localStorage.setItem('camrush.q', this.quality); const b = document.getElementById('btn-q'); if (b) b.textContent = this.quality === 'high' ? 'HQ' : 'LQ'; }
+  toggleQuality() { this.setQuality(this.quality === 'high' ? 'low' : 'high', true); }
   transition(fn) { const w = this.wipe; if (!w) return fn(); w.classList.add('on'); setTimeout(() => { fn(); setTimeout(() => w.classList.remove('on'), 60); }, 220); }
 
   best(id) { return +(localStorage.getItem('camrush.best.' + id) || 0); }
 
   buildMenu() {
-    const grid = document.getElementById('grid'); grid.innerHTML = ''; grid.classList.toggle('many', this.games.length > 6);
-    for (const g of this.games) {
+    const grid = document.getElementById('grid'); grid.innerHTML = '';
+    const pages = Math.ceil(this.games.length / this.per); this.page = clamp(this.page, 0, pages - 1);
+    this.games.slice(this.page * this.per, (this.page + 1) * this.per).forEach((g) => {
       const m = g.meta, el = document.createElement('div');
       el.className = 'card'; el.dataset.id = m.id; el.style.setProperty('--i', grid.children.length);
       el.style.setProperty('--g1', m.colors[0]); el.style.setProperty('--g2', m.colors[1]);
@@ -58,8 +84,17 @@ export class App {
         <div class="meta"><span class="pill">${m.control}</span><span class="pill best" data-best="${m.id}"></span></div><div class="ring"></div>`;
       el.addEventListener('click', () => this.startGame(m.id));
       grid.appendChild(el);
-    }
+    });
+    const dots = document.getElementById('pg-dots');
+    dots.innerHTML = Array.from({ length: pages }, (_, i) => `<i class="${i === this.page ? 'on' : ''}"></i>`).join('');
+    document.getElementById('pg-label').textContent = `Page ${this.page + 1} of ${pages}`;
+    document.getElementById('pg-prev').disabled = this.page === 0; document.getElementById('pg-next').disabled = this.page >= pages - 1;
+    this._elsT = -1e9;
     this.refreshBest();
+  }
+  setPage(n) {
+    const pages = Math.ceil(this.games.length / this.per), np = clamp(n, 0, pages - 1);
+    if (np === this.page) return; this.page = np; this.snd.click(); this.buildMenu();
   }
   refreshBest() { document.querySelectorAll('[data-best]').forEach((e) => { const b = this.best(e.dataset.best); e.textContent = b ? '★ ' + b : 'Not played'; }); }
 
@@ -73,7 +108,10 @@ export class App {
     $('btn-full').onclick = () => this.toggleFull();
     $('btn-q').onclick = () => this.toggleQuality(); $('btn-q').textContent = this.quality === 'high' ? 'HQ' : 'LQ';
     $('btn-mute').textContent = this.snd.muted ? '🔇' : '🔊';
+    $('pg-prev').onclick = () => this.setPage(this.page - 1); $('pg-next').onclick = () => this.setPage(this.page + 1);
     addEventListener('keydown', (e) => {
+      if (this.state === 'menu' && e.code === 'ArrowRight') this.setPage(this.page + 1);
+      if (this.state === 'menu' && e.code === 'ArrowLeft') this.setPage(this.page - 1);
       if (e.code === 'Escape' && (this.state === 'play' || this.state === 'countdown' || this.state === 'over')) this.toMenu();
       if (e.code === 'KeyF') this.toggleFull();
       if (e.code === 'KeyQ') this.toggleQuality();
@@ -108,7 +146,7 @@ export class App {
   toMenu() { if (this.state === 'splash') return this._toMenu(); this.transition(() => this._toMenu()); }
   _toMenu() {
     this.state = 'menu'; this.game = null;
-    this.setOverlay('over', false); this.setOverlay('menu', true); this.refreshBest();
+    this.setOverlay('over', false); this.setOverlay('menu', true); this.buildMenu();
   }
 
   startGame(id) { this.transition(() => this._startGame(id)); }
@@ -145,7 +183,7 @@ export class App {
   }
 
   loop(now) {
-    const dt = Math.min(0.05, (now - this.last) / 1000); this.last = now; this.t += dt;
+    const rawMs = now - this.last; const dt = Math.min(0.05, rawMs / 1000); this.last = now; this.t += dt; this.watchPerf(rawMs);
     const { W, H, ctx } = this;
     if (this.tracker.ready) {
       const r = this.tracker.update(now, W, H, this.needs());
@@ -184,14 +222,19 @@ export class App {
 
   updateDwell(dt) {
     const h = this.input.hands[0];
-    const els = [...document.querySelectorAll('.overlay.show .dwell, #menu.show .card')];
+    if (performance.now() - this._elsT > 350) {
+      this._els = [...document.querySelectorAll('.overlay.show .dwell:not(:disabled), #menu.show .card')].map((el) => ({ el, r: el.getBoundingClientRect() }));
+      this._elsT = performance.now();
+    }
+    const els = this._els;
     let hit = null;
     const inGame = this.state === 'play' || this.state === 'countdown';
     if (this.state === 'play' || this.state === 'countdown') {
       // back button (canvas-drawn)
-      if (h && h.x > 14 && h.x < 150 && h.y > 14 && h.y < 66 && !h.mouse) hit = 'back';
+      if (h && h.x > 14 && h.x < 170 && h.y > 14 && h.y < 74 && !h.mouse) hit = 'back';
     } else if (h && els.length && !h.mouse) {
-      for (const el of els) { const r = el.getBoundingClientRect(); if (h.x >= r.left && h.x <= r.right && h.y >= r.top && h.y <= r.bottom) { hit = el; break; } }
+      for (const { el, r } of els) { if (h.x >= r.left && h.x <= r.right && h.y >= r.top && h.y <= r.bottom) { hit = el; break; } }
+      if (hit !== this.lockEl) this.lockEl = null; else hit = null; // after a click, leave the button before it can fire again
     }
     if (hit !== this.dwell.el) {
       if (this.dwell.el && this.dwell.el !== 'back') { this.dwell.el.style.setProperty('--p', 0); this.dwell.el.classList.remove('hot'); }
@@ -205,7 +248,7 @@ export class App {
       this.backP = hit === 'back' ? p : 0;
       const pinchNow = h.pinch && !this._wasPinch && hit !== 'back';
       if (p >= 1 || pinchNow) {
-        const el = hit; this.dwell = { el: null, t: 0 }; this.backP = 0;
+        const el = hit; this.dwell = { el: null, t: 0 }; this.backP = 0; this.lockEl = el;
         if (el === 'back') { this.snd.click(); this.toMenu(); }
         else { el.style.setProperty('--p', 0); el.classList.remove('hot'); this.snd.select(); el.click(); }
       }
@@ -223,7 +266,7 @@ export class App {
     for (const st of this.stars) { const y = ((st.y + this.t * 0.01 * st.z) % 1) * H; ctx.globalAlpha = 0.25 + 0.5 * st.z * (0.6 + 0.4 * Math.sin(this.t * 2 + st.p)); ctx.beginPath(); ctx.arc(st.x * W, y, st.z * 1.8, 0, 7); ctx.fill(); }
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'lighter';
-    for (const o of this.orbs) {
+    for (const o of (this.quality === 'high' ? this.orbs : [])) {
       const x = (o.x + Math.sin(this.t * o.s + o.p) * 0.12) * W, y = (o.y + Math.cos(this.t * o.s * 1.3 + o.p) * 0.12) * H, r = o.r * Math.max(W, H);
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
       g.addColorStop(0, `hsla(${o.h},90%,60%,.16)`); g.addColorStop(1, 'transparent');
@@ -263,34 +306,38 @@ export class App {
       b.drawImage(this.canvas, 0, 0, bw, bh); b.filter = 'none';
       ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = k; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(this.bloomC, 0, 0, W, H); ctx.restore();
     }
-    const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
-    vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,10,.42)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    if (!this._vig) {
+      const c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+      const vg = x.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+      vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,10,.42)'); x.fillStyle = vg; x.fillRect(0, 0, W, H); this._vig = c;
+    }
+    ctx.drawImage(this._vig, 0, 0, W, H);
   }
 
   drawHud() {
     const { ctx, W } = this, h = this.hud;
     // back pill
-    roundRect(ctx, 16, 16, 124, 46, 23); ctx.fillStyle = 'rgba(8,10,24,.6)'; ctx.fill();
+    roundRect(ctx, 16, 16, 150, 54, 27); ctx.fillStyle = 'rgba(8,10,24,.7)'; ctx.fill();
     ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1.5; ctx.stroke();
-    if (this.backP > 0) { ctx.save(); roundRect(ctx, 16, 16, 124, 46, 23); ctx.clip(); ctx.fillStyle = 'rgba(0,224,255,.45)'; ctx.fillRect(16, 16, 124 * this.backP, 46); ctx.restore(); }
-    ctx.fillStyle = '#fff'; ctx.font = '600 18px "Space Grotesk", Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('‹  Menu', 78, 40);
+    if (this.backP > 0) { ctx.save(); roundRect(ctx, 16, 16, 150, 54, 27); ctx.clip(); ctx.fillStyle = 'rgba(0,224,255,.45)'; ctx.fillRect(16, 16, 150 * this.backP, 54); ctx.restore(); }
+    ctx.fillStyle = '#fff'; ctx.font = '700 22px "Space Grotesk", Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('‹  Menu', 91, 44);
     // score
     ctx.font = '700 58px "Space Grotesk", Inter, sans-serif'; ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(0,0,0,.5)';
     const s = String(Math.floor(h.score));
     ctx.strokeText(s, W / 2, 46); ctx.fillStyle = '#fff'; ctx.fillText(s, W / 2, 46);
-    if (h.label) { ctx.font = '600 14px Inter, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText(h.label, W / 2, 84); }
+    if (h.label) { ctx.font = '700 20px "Space Grotesk", Inter, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillText(h.label, W / 2, 92); }
     // lives
     if (h.lives !== null) {
       for (let i = 0; i < h.maxLives; i++) {
         const x = W - 38 - i * 40, on = i < h.lives;
-        this.heart(ctx, x, 40, 15, on);
+        this.heart(ctx, x, 40, 18, on);
       }
     }
     if (h.time !== null) {
       const t = Math.max(0, Math.ceil(h.time));
       const ty = h.lives !== null ? 74 : 16;
-      roundRect(ctx, W - 130, ty, 114, 46, 23); ctx.fillStyle = t <= 10 ? 'rgba(255,60,90,.55)' : 'rgba(8,10,24,.6)'; ctx.fill();
-      ctx.fillStyle = '#fff'; ctx.font = '700 22px "Space Grotesk", sans-serif'; ctx.fillText(`${t}s`, W - 73, ty + 24);
+      roundRect(ctx, W - 150, ty, 134, 54, 27); ctx.fillStyle = t <= 10 ? 'rgba(255,60,90,.55)' : 'rgba(8,10,24,.6)'; ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '700 28px "Space Grotesk", sans-serif'; ctx.fillText(`${t}s`, W - 83, ty + 29);
     }
   }
 

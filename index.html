@@ -40,10 +40,15 @@
   </header>
   <div class="hero">
     <h2>Pick a game</h2>
-    <p>Hold your fingertip over a card for a second, or pinch to start.</p>
+    <p>Hold your fingertip over a game for a second, or pinch to start. Use Prev / Next for more games.</p>
   </div>
   <div id="grid" class="grid"></div>
-  <footer class="foot">Hand &amp; face tracking by MediaPipe &middot; Esc = back to menu &middot; F = fullscreen &middot; M = mute</footer>
+  <div class="pager">
+    <button id="pg-prev" class="btn big dwell">&lsaquo; Prev</button>
+    <div class="pg-mid"><div id="pg-dots" class="dots"></div><span id="pg-label"></span></div>
+    <button id="pg-next" class="btn big dwell">Next &rsaquo;</button>
+  </div>
+  <footer class="foot">Hand &amp; face tracking by MediaPipe &middot; Esc = back to menu &middot; arrows = pages &middot; F = fullscreen &middot; M = mute &middot; Q = graphics</footer>
 </div>
 
 <div id="over" class="overlay">

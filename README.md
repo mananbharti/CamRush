@@ -1,6 +1,6 @@
 # CamRush
 
-Camera-controlled arcade for Tech Utsav. Thirteen games, all played with your hands, face or head - no controller.
+Camera-controlled arcade for Tech Utsav. Seventeen games, all played with your hands, face or head - no controller.
 
 | Game | Control |
 |---|---|
@@ -17,6 +17,10 @@ Camera-controlled arcade for Tech Utsav. Thirteen games, all played with your ha
 | Target Blitz | Point to aim, pinch to fire |
 | Neon Beats | Rhythm game: touch the notes at the line |
 | Goal Rush | Keeper mode: block every shot with both hands; gold balls score triple |
+| Snake Surge | Steer the snake with your fingertip, eat orbs, never bite your tail |
+| Tower Stack | Pinch (or click / Space) to drop the sliding block and build a tall tower |
+| Sky Juggle | Bat balloons back up with your palms; three misses ends the game |
+| Meteor Dodge | Fly your ship with your palm through a meteor storm, grab stars |
 
 ## Setup (one time, needs internet)
 
@@ -28,7 +32,9 @@ Camera-controlled arcade for Tech Utsav. Thirteen games, all played with your ha
 
 `npm start` (or double-click `start.bat`), then open http://localhost:4173 in Chrome, click **Start with camera**, press **F** for fullscreen. `npm start` refuses to start if any asset is missing.
 
-No camera? Use "Play with mouse". Keys: Esc = menu, F = fullscreen, M = mute, Q = graphics quality (HQ/LQ; use LQ on a weak laptop).
+No camera? Use "Play with mouse". Keys: Esc = menu, F = fullscreen, M = mute, Arrow keys / Prev-Next = menu pages, Q = graphics quality (HQ/LQ). The app switches to LQ by itself if it stays under about 40 fps.
+
+Performance notes: the camera runs at 640x480 / 30 fps, hand tracking automatically runs on every 2nd or 3rd frame when the laptop is slow, and LQ removes glow, bloom and blur effects.
 
 Tips: good front light, camera at face height, stand ~1m back.
 

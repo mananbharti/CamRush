@@ -110,3 +110,52 @@ canvas#cursor { pointer-events:none; z-index:50; }
 .grid.many .pill { white-space:nowrap; font-size:11px; padding:4px 9px; }
 .grid.many .card .meta { flex-wrap:nowrap; gap:6px; }
 .grid.many .card .meta .pill:first-child { overflow:hidden; text-overflow:ellipsis; min-width:0; }
+
+
+/* ===== performance + readability pass ===== */
+/* no live blur over the moving canvas (very costly on integrated GPUs) */
+.card, .btn, .iconbtn { backdrop-filter:none; }
+.card { background:linear-gradient(160deg,rgba(40,44,80,.82),rgba(18,20,42,.86)); }
+.btn, .iconbtn { background:rgba(30,34,70,.72); }
+#splash { backdrop-filter:none; background:radial-gradient(1200px 700px at 50% 30%,rgba(124,92,255,.28),transparent 60%),rgba(6,7,15,.88); }
+#over { backdrop-filter:none; background:radial-gradient(900px 500px at 50% 40%,rgba(124,92,255,.22),transparent 65%),rgba(6,7,15,.82); }
+.card .glow { filter:none; }
+.hero h2 { animation:none; color:#fff; -webkit-text-fill-color:#fff; background:none; }
+.over-best.new { animation:none; }
+.lq .card::before, .lq .logo-mark { animation:none; }
+.lq .card, .lq .btn { transition:none; }
+.lq .card { animation-duration:.01s; animation-delay:0s; }
+
+/* paged menu: 3 x 2 big cards */
+.grid, .grid.many { grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(2,1fr); grid-auto-rows:auto; gap:22px; overflow:visible; align-content:stretch; padding:4px 2px; max-width:1500px; }
+.grid.many .card, .card { min-height:0; padding:22px 26px; }
+.card .ico, .grid.many .card .ico { width:78px; height:78px; border-radius:20px; padding:9px; }
+.card h3, .grid.many .card h3 { font-size:clamp(26px,2.5vw,38px); margin:12px 0 6px; }
+.card p, .grid.many .card p { font-size:clamp(15px,1.25vw,18px); line-height:1.4; -webkit-line-clamp:3; min-height:0; color:#b8bde0; }
+.card .meta, .grid.many .card .meta { margin-top:auto; padding-top:10px; }
+.pill, .grid.many .pill { font-size:clamp(13px,1.05vw,16px); padding:6px 13px; }
+.hero { margin:1vh 0 1.6vh; }
+.hero h2 { font-size:clamp(32px,4vw,56px); }
+.hero p, .hero p { display:block !important; font-size:clamp(15px,1.3vw,19px); color:#b8bde0; }
+.brand { font-size:32px; }
+.stat { font-size:14px; }
+.iconbtn { width:52px; height:52px; font-size:20px; }
+.iconbtn.txt { font-size:15px; }
+.pager { display:flex; align-items:center; justify-content:space-between; gap:20px; max-width:1500px; width:100%; margin:14px auto 4px; }
+.pager .btn { min-width:170px; font-size:22px; padding:16px 28px; }
+.pager .btn:disabled { opacity:.3; cursor:default; }
+.pg-mid { display:flex; flex-direction:column; align-items:center; gap:8px; color:var(--mut); font:600 16px 'Space Grotesk',sans-serif; }
+.dots { display:flex; gap:10px; }
+.dots i { width:12px; height:12px; border-radius:50%; background:rgba(255,255,255,.22); }
+.dots i.on { background:var(--b); box-shadow:0 0 10px var(--b); }
+.foot { font-size:13px; color:#8087b3; }
+.btn.big { font-size:24px; }
+#menu { padding:20px 36px 14px; }
+@media (max-width:1000px) { .grid, .grid.many { grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(3,1fr); } #menu { padding:14px 16px; } }
+@media (max-height:700px) { .card p, .grid.many .card p { -webkit-line-clamp:2; } .card .ico, .grid.many .card .ico { width:60px; height:60px; } }
+.card > * { flex-shrink:0; }
+.card .ico, .grid.many .card .ico { width:60px; height:60px; padding:7px; }
+.card h3, .grid.many .card h3 { margin:10px 0 4px; }
+.card, .grid.many .card { padding:16px 22px; }
+.card p, .grid.many .card p { -webkit-line-clamp:2; min-height:2.8em; }
+@media (max-height:820px) { .hero p { display:none !important; } .hero { margin:0 0 1vh; } .hero h2 { font-size:38px; } }
