@@ -1,6 +1,6 @@
 # CamRush
 
-Camera-controlled arcade for Tech Utsav. Seventeen games, all played with your hands, face or head - no controller.
+Camera-controlled arcade for Tech Utsav. Twenty-one games, all played with your hands, face or head - no controller.
 
 | Game | Control |
 |---|---|
@@ -21,6 +21,11 @@ Camera-controlled arcade for Tech Utsav. Seventeen games, all played with your h
 | Tower Stack | Pinch (or click / Space) to drop the sliding block and build a tall tower |
 | Sky Juggle | Bat balloons back up with your palms; three misses ends the game |
 | Meteor Dodge | Fly your ship with your palm through a meteor storm, grab stars |
+
+| Orbit Dash | Pinch / click / Space switches between two rings; match each open gate |
+| Memory Pulse | Watch and repeat pad sequences using point + pinch, click, or keys 1-4 |
+| Maze Trace | Guide a light through walls with hand / mouse / touch or arrow keys |
+| Hoop Shot | Aim the dotted arc with your hand / pointer, pinch or Space to shoot |
 
 ## Setup (one time, needs internet)
 

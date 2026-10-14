@@ -1,0 +1,17 @@
+import { ExpansionGame } from './_expansion.js';
+const COLORS = ['#44e4d3', '#fc6ca3', '#ffd06a', '#a28cff'];
+export default class MemoryPulse extends ExpansionGame {
+  static meta = { id: 'memory', name: 'Memory Pulse', tagline: 'Watch the light sequence, then repeat it with your hand.', control: '🖐 Point + pinch', hint: 'Watch first. Then point at a pad and pinch/click, or use keys 1-4.', needs: { hands: true, face: false }, colors: ['#fc6ca3', '#a28cff'], cursor: 'dot', pip: false, bloom: 0.1, icon: '<svg viewBox="0 0 100 100"><rect x="10" y="10" width="35" height="35" rx="8" fill="#44e4d3"/><rect x="55" y="10" width="35" height="35" rx="8" fill="#fc6ca3"/><rect x="10" y="55" width="35" height="35" rx="8" fill="#ffd06a"/><rect x="55" y="55" width="35" height="35" rx="8" fill="#a28cff"/></svg>' };
+  constructor(app) { super(app); this.sequence = []; this.round = 0; this.flash = -1; this.flashT = 0; this.nextRound(); }
+  nextRound() { this.round++; this.sequence.push(Math.floor(Math.random() * 4)); this.phase = 'watch'; this.clock = -0.8; this.index = 0; this.lastSound = -1; this.remaining = 10 + this.sequence.length * 2; }
+  padAt(p) { if (!p) return -1; for (let i = 0; i < 4; i++) { const x = 0.08 + (i % 2) * 0.46, y = 0.1 + Math.floor(i / 2) * 0.44; if (p.x >= x && p.x <= x + 0.38 && p.y >= y && p.y <= y + 0.36) return i; } return -1; }
+  choose(i) { if (this.over || this.phase !== 'repeat' || i < 0) return; this.flash = i; this.flashT = 0.22; this.app.snd.brick(i); if (i !== this.sequence[this.index]) { this.end('Sequence broken', `Reached round ${this.round}`); return; } this.index++; this.score += 25; if (this.index === this.sequence.length) { this.score += this.round * 50; this.phase = 'between'; this.clock = 0; this.message('PERFECT SEQUENCE'); this.app.snd.bonus(); } }
+  update(dt, input) {
+    if (this.over) return; this.tick(dt); const a = this.action(input); this.flashT = Math.max(0, this.flashT - dt); if (this.flashT === 0) this.flash = -1;
+    if (this.phase === 'watch') { this.clock += dt; const n = Math.floor(this.clock / 0.85); this.flash = n >= 0 && n < this.sequence.length && this.clock % 0.85 < 0.57 ? this.sequence[n] : -1; if (this.flash >= 0 && n !== this.lastSound) { this.lastSound = n; this.app.snd.brick(this.flash); } if (this.clock >= this.sequence.length * 0.85 + 0.2) { this.phase = 'repeat'; this.flash = -1; } }
+    else if (this.phase === 'between') { this.clock += dt; if (this.clock > 1.1) this.nextRound(); }
+    else { this.remaining -= dt; if (this.remaining <= 0) this.end('Time is up', `Reached round ${this.round}`); else { let choice = a.press ? this.padAt(this.pointer(input)) : -1; for (let i = 0; i < 4; i++) if (input.consume('Digit' + (i + 1))) choice = i; this.choose(choice); } }
+    this.hud(`Round ${this.round} / ${this.phase === 'watch' ? 'Watch' : this.phase === 'between' ? 'Nice!' : 'Your turn'}`, this.phase === 'repeat' ? this.remaining : null);
+  }
+  draw(ctx) { this.backdrop(ctx, '#21102f', '#101a31'); for (let i = 0; i < 4; i++) { const x = 0.08 + i % 2 * 0.46, y = 0.1 + Math.floor(i / 2) * 0.44; ctx.globalAlpha = this.flash === i ? 1 : 0.35; this.panel(ctx, x, y, 0.38, 0.36, COLORS[i], 0.04); ctx.globalAlpha = 1; this.text(ctx, String(i + 1), x + 0.19, y + 0.18, 0.095, this.flash === i ? '#0b1020' : '#fff'); } this.footer(ctx, this.phase === 'watch' ? 'Watch the pattern' : 'Point + pinch, click a pad, or keys 1-4'); }
+}
