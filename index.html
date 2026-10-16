@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>CamRush - Camera Arcade</title>
+<meta name="theme-color" content="#ece6d8" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='23' fill='%23d9432b'/%3E%3Ccircle cx='24' cy='24' r='10' fill='none' stroke='%23ece6d8' stroke-width='4'/%3E%3Ccircle cx='24' cy='24' r='2.6' fill='%23ece6d8'/%3E%3C/svg%3E" />
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<div id="splash" class="overlay show">
+  <div class="splash-card">
+    <div class="sp-l">
+      <div class="masthead"><svg viewBox="0 0 48 48" width="40" height="40" aria-hidden="true"><circle cx="24" cy="24" r="23" fill="#d9432b"/><circle cx="24" cy="24" r="10" fill="none" stroke="#ece6d8" stroke-width="4"/><circle cx="24" cy="24" r="2.6" fill="#ece6d8"/></svg><span>Tech Utsav &middot; camera arcade</span></div>
+      <h1 class="wordmark">CamRush</h1>
+      <p class="kicker">Move more. <em>Stress less.</em></p>
+      <p class="tag">Camera games you play with your hands and face. No controller, no install. Two minutes is enough.</p>
+      <div id="splash-actions">
+        <button id="btn-start" class="btn primary big">Start with camera</button>
+        <button id="btn-mouse" class="btn ghost">No camera? Play with mouse</button>
+      </div>
+      <div id="loadbox" hidden>
+      <div class="breath"><i></i><span id="breath-t">Breathe in</span></div>
+      <div class="bar"><i id="loadfill"></i></div>
+      <div id="loadtext">Starting camera...</div>
+      <div id="facts"></div>
+      <button id="btn-skip" class="btn ghost" hidden>Skip</button>
+    </div>
+      <p id="errbox" class="err" hidden></p>
+    </div>
+    <div class="why">
+      <h3>The problem</h3>
+      <p>Nearly 60% of US college students report above-average stress<sup>1</sup>. Most of us answer it by sitting still and scrolling.</p>
+      <h3>What CamRush does</h3>
+      <p>Short, light, physical games that make you reach, lean, slice and laugh, with friends in the same room. A few minutes of play, away from the feed.</p>
+    </div>
+    <p class="fine">Tech Utsav &middot; Camera video stays on your device. Nothing is recorded or uploaded.<br/><sup>1</sup> American College Health Association survey, cited in Stress-Reducing Effects of Playing a Casual Video Game among Undergraduate Students, PMC7952082.</p>
+  </div>
+</div>
+
+<div id="menu" class="overlay">
+  <header class="top">
+    <div class="brand"><svg class="bmark" viewBox="0 0 48 48" width="26" height="26" aria-hidden="true"><circle cx="24" cy="24" r="23" fill="#d9432b"/><circle cx="24" cy="24" r="10" fill="none" stroke="#ece6d8" stroke-width="4"/><circle cx="24" cy="24" r="2.6" fill="#ece6d8"/></svg><b>CamRush</b><em>Tech Utsav</em></div>
+    <div class="top-r">
+      <span id="stat" class="stat"></span>
+      <button class="btn dwell mpbtn" id="btn-mp">Multiplayer</button>
+      <button class="iconbtn txt" id="btn-q" title="Graphics quality (Q)">HQ</button>
+      <button class="iconbtn" id="btn-mute" title="Sound (M)">Sound on</button>
+      <button class="iconbtn" id="btn-full" title="Fullscreen (F)">Fullscreen</button>
+    </div>
+  </header>
+  <div class="hero">
+    <h2>Pick a game. <em>Take a breather.</em></h2>
+    <p>Hold your fingertip over a game for a second, or pinch to start. Use Prev / Next for more games.</p>
+  </div>
+  <div id="grid" class="grid"></div>
+  <div class="pager">
+    <button id="pg-prev" class="btn big dwell">&lsaquo; Prev</button>
+    <div class="pg-mid"><div id="pg-dots" class="dots"></div><span id="pg-label"></span></div>
+    <button id="pg-next" class="btn big dwell">Next &rsaquo;</button>
+  </div>
+  <footer class="foot">Hand &amp; face tracking by MediaPipe &middot; Esc = back to menu &middot; arrows = pages &middot; F = fullscreen &middot; M = mute &middot; Q = graphics</footer>
+</div>
+
+<div id="over" class="overlay">
+  <div class="over-card">
+    <div class="over-kicker" id="over-title">Game over</div>
+    <div class="over-score" id="over-score">0</div>
+    <div class="over-best" id="over-best"></div>
+    <div id="over-extra" class="over-extra"></div>
+    <div class="over-actions">
+      <button class="btn primary big dwell" id="btn-again">Play again</button>
+      <button class="btn ghost big dwell" id="btn-menu">Menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="mp" class="overlay"><div class="over-card mp-card" id="mp-card"></div></div>
+<div id="wipe"></div>
+<canvas id="cursor"></canvas>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
